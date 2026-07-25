@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>fallsieve · curation gate</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0a0a0f;--surface:#15161f;--border:#2a2c3a;--text:#e6e7ee;--dim:#9296a6;--keep:#4caf50;--rej:#e05a4d;--flag:#f0c040;font-family:system-ui,-apple-system,sans-serif}
+body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:1.5rem}
+.wrap{width:100%;max-width:42rem}
+h1{font-size:1.5rem}.sub{color:var(--dim);font-size:.9rem;margin-bottom:1.2rem}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:.6rem;padding:1.1rem;margin-bottom:1rem}
+button{padding:.5rem .9rem;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:.4rem;cursor:pointer;font-size:.85rem;margin-right:.4rem}
+button.go{border-color:var(--keep);color:var(--keep)}
+label{font-size:.8rem;color:var(--dim);margin-right:.4rem}
+input{background:var(--bg);border:1px solid var(--border);border-radius:.3rem;color:var(--text);padding:.3rem .5rem;width:4rem}
+.lbl{font-size:.72rem;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
+.grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.6rem;margin-top:.6rem}
+.col h4{font-size:.78rem;margin-bottom:.3rem}
+.item{font-family:ui-monospace,monospace;font-size:.72rem;padding:.3rem .4rem;border-radius:.3rem;margin-bottom:.3rem;background:var(--bg);border:1px solid var(--border)}
+.keep h4{color:var(--keep)}.rej h4{color:var(--rej)}.flag h4{color:var(--flag)}
+.item .why{color:var(--dim);font-size:.66rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>fallsieve</h1>
+  <p class="sub">Gate candidates by quality and licence. Only what passes both is kept — the rest is rejected or flagged for review.</p>
+  <div class="card">
+    <label>min score</label><input id="min" type="number" step="0.05" value="0.7" style="width:4.5rem">
+    <label style="margin-left:1rem"><input type="checkbox" id="copyleft" style="width:auto"> allow copyleft</label>
+    <button class="go" onclick="run()" style="float:right">Sift ▸</button>
+    <div class="lbl" style="margin-top:.8rem">Demo candidates (quality = fraction of non-TODO lines)</div>
+    <div class="grid" id="out"></div>
+  </div>
+</div>
+<script type="module">
+import { Sieve } from './sieve.mjs';
+const assess = c => { const L = String(c.content).split('\n').filter(Boolean); const bad = L.filter(l=>/TODO|FIXME/.test(l)).length; return { score: L.length ? 1-bad/L.length : 0 }; };
+const candidates = [
+  { id:'parser',  content:'function parse(s){\n return s.trim();\n}', licence:'MIT',       source:'x/parser' },
+  { id:'router',  content:'export const route=k=>hash(k);\n// solid', licence:'Apache-2.0', source:'x/router' },
+  { id:'stub',    content:'// TODO\n// TODO\n// FIXME',                 licence:'MIT',       source:'x/stub' },
+  { id:'gpltool', content:'const clever=()=>42;\nreturn clever();',     licence:'GPL-3.0',   source:'x/gpl' },
+  { id:'nolic',   content:'const useful=1;\nexport default useful;',    licence:'',          source:'x/nolic' },
+  { id:'dupe',    content:'function parse(s){\n return s.trim();\n}',   licence:'ISC',       source:'x/dupe' },
+];
+window.run = async () => {
+  const sieve = new Sieve({ assess, minScore: Number(document.getElementById('min').value)||0.7,
+    allow: document.getElementById('copyleft').checked ? ['permissive','copyleft'] : ['permissive'] });
+  const r = await sieve.sift(candidates);
+  const col = (title, cls, arr, showWhy) => `<div class="col ${cls}"><h4>${title} (${arr.length})</h4>` +
+    arr.map(x=>`<div class="item">${x.id||x.hash} <span style="color:var(--dim)">·${x.licence||'none'}·${x.score.toFixed(2)}</span>${showWhy?`<div class="why">${x.reason||''}</div>`:''}</div>`).join('') + '</div>';
+  document.getElementById('out').innerHTML = col('Kept','keep',r.kept,false) + col('Rejected','rej',r.rejected,true) + col('Flagged','flag',r.flagged,true);
+};
+run();
+</script>
+</body>
+</html>

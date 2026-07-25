@@ -1,0 +1,10 @@
+{
+  "name": "fallsieve",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "sieve.mjs",
+  "scripts": {
+    "test": "node --test sieve.test.mjs"
+  },
+  "license": "MIT"
+}
